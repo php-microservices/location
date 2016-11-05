@@ -14,3 +14,11 @@
 $app->get('/', function () use ($app) {
     return $app->version();
 });
+
+$app->group(['prefix' => 'api/v1', 'namespace' => 'App\Http\Controllers'], function ($app) {
+    $app->get('location', 'LocationController@index');
+    $app->get('location/{id}', 'LocationController@get');
+    $app->post('location', 'LocationController@create');
+    $app->put('location/{id}', 'LocationController@update');
+    $app->delete('location/{id}', 'LocationController@delete');
+});
