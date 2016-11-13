@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class LocationController extends Controller
 {
+    const DEFAULT_CACHE_TIME = 1;
+
     const ROUND_DECIMALS = 2;
 
     const MAX_CLOSEST_SECRETS = 3;
@@ -79,6 +82,16 @@ class LocationController extends Controller
 
     public function index(Request $request)
     {
+        $currentLocation = [
+            'latitude'  => 40.730610,
+            'longitude' => -73.935242
+        ];
+
+        $closestSecrets = $this->getClosestSecrets($currentLocation);
+
+        print_r($closestSecrets);
+
+
         return response()->json(['method' => 'index']);
     }
 
@@ -104,19 +117,25 @@ class LocationController extends Controller
 
     public function getClosestSecrets($originPoint)
     {
-        $closestSecrets = [];
+        $cacheKey = 'L' .  $originPoint['latitude'] . $originPoint['longitude'];
 
-        $distances = array_map(function($item) use($originPoint) {
-            return $this->getDistance($item['location'], $originPoint);
-        }, self::$cacheSecrets);
+        $closestSecrets = Cache::remember($cacheKey, self::DEFAULT_CACHE_TIME, function () use ($originPoint) {
+            $calculatedClosestSecrets = [];
 
-        asort($distances);
+            $distances = array_map(function($item) use($originPoint) {
+                return $this->getDistance($item['location'], $originPoint);
+            }, self::$cacheSecrets);
 
-        $distances = array_slice($distances, 0, self::MAX_CLOSEST_SECRETS, true);
+            asort($distances);
 
-        foreach ($distances as $key => $distance) {
-            $closestSecrets[] = self::$cacheSecrets[$key];
-        }
+            $distances = array_slice($distances, 0, self::MAX_CLOSEST_SECRETS, true);
+
+            foreach ($distances as $key => $distance) {
+                $calculatedClosestSecrets[] = self::$cacheSecrets[$key];
+            }
+
+            return $calculatedClosestSecrets;
+        });
 
         return $closestSecrets;
     }
